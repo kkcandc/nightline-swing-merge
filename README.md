@@ -6,7 +6,7 @@ No accounts. No keys. The whole run lives in the browser.
 
 ## Play
 
-Live city: _(deploy URL is added when production is published)_
+Live city: https://nightline-kenny-klines-projects.vercel.app
 
 Or locally:
 
