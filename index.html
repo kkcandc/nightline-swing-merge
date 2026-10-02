@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NIGHTLINE</title>
+    <meta
+      name="description"
+      content="NIGHTLINE — swing filament lines and cape-glide through Vesper Reach, a gothic night city."
+    />
+    <meta name="theme-color" content="#100e18" />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="vignette"></div>
+    <div id="speedlines"></div>
+    <div id="ui">
+      <header id="brand" hidden>
+        <p class="eyebrow">Vesper Reach</p>
+        <strong>NIGHTLINE</strong>
+      </header>
+
+      <section id="menu">
+        <p class="eyebrow">Vesper Reach</p>
+        <h1>NIGHTLINE</h1>
+        <p class="tag">A courier’s route through a gothic night city. Throw a filament, keep the speed, open the short cape.</p>
+        <button id="play" type="button">Enter the city</button>
+        <p id="touch-note" class="note" hidden>Keyboard and mouse. A trackpad can look, but a mouse swings better.</p>
+        <ul class="controls">
+          <li><kbd>Mouse</kbd> look</li>
+          <li><kbd>W A S D</kbd> run</li>
+          <li><kbd>Shift</kbd> sprint</li>
+          <li><kbd>Space</kbd> jump, hold to cape-glide</li>
+          <li><kbd>Left mouse</kbd> or <kbd>F</kbd> hold a nightline</li>
+          <li><kbd>Release</kbd> keep your momentum</li>
+          <li><kbd>Q</kbd> / wheel reel in · <kbd>E</kbd> pay out</li>
+          <li><kbd>Ctrl</kbd> dive-bomb, then release to pull out</li>
+          <li><kbd>T</kbd> restart the Night Circuit</li>
+        </ul>
+        <p id="menu-best" class="note">No circuit time yet.</p>
+      </section>
+
+      <section id="hud" hidden>
+        <div class="hud-top">
+          <div>
+            <p id="landmark">Mourning Gate</p>
+            <p id="clock">—:—</p>
+          </div>
+          <div class="hud-right">
+            <p id="best">BEST —</p>
+            <p><span id="speed">0</span> <small>km/h</small></p>
+            <p id="state">RUN</p>
+          </div>
+        </div>
+        <canvas id="map" width="168" height="168"></canvas>
+        <div class="hud-bottom">
+          <p>Orbs <span id="orbs">0/0</span> <span id="chain"></span></p>
+          <div class="meter" aria-hidden="true"><span id="stamina"></span></div>
+          <p id="hint"></p>
+        </div>
+      </section>
+
+      <section id="pause" hidden>
+        <p class="eyebrow">Paused</p>
+        <h2>The line is slack.</h2>
+        <button id="resume" type="button">Resume</button>
+        <button id="restart" type="button" class="ghost">Restart circuit</button>
+        <button id="reset-orbs" type="button" class="ghost">Reset signal orbs</button>
+        <button id="mute" type="button" class="ghost">Sound on</button>
+        <button id="rain" type="button" class="ghost">Rain on</button>
+        <label class="sens">Look sensitivity <input id="sens" type="range" min="0.55" max="1.8" step="0.05" value="1" /></label>
+      </section>
+
+      <div id="crosshair" hidden></div>
+      <div id="toast"></div>
+      <div id="banner" hidden></div>
+      <p id="fps" hidden></p>
+      <p id="boot">Raising the city…</p>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
