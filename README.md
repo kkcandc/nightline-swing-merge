@@ -6,7 +6,7 @@ No accounts. No keys. The whole run lives in the browser.
 
 ## Play
 
-Live city: https://nightline-kenny-klines-projects.vercel.app
+Live city: https://nightline.vercel.app
 
 Or locally:
 
