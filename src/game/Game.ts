@@ -28,6 +28,7 @@ import { Character } from './character'
 import { buildCity, type City } from './city'
 import { RINGS, SPAWN } from './course'
 import { Filament } from './filament'
+import { SwingJuice } from './juice'
 import { Hud, type HudMode } from './hud'
 import { Input } from './input'
 import { layoutOrbs, Orbs } from './orbs'
@@ -61,6 +62,7 @@ export class Game {
   private readonly orbs: Orbs
   private readonly trial: Trial
   private readonly filament = new Filament()
+  private readonly juice = new SwingJuice()
   private readonly rain: Rain
   private readonly audio = new AudioBus()
   private readonly hud: Hud
@@ -79,9 +81,16 @@ export class Game {
   private didRelease = false
   private didGlide = false
   private readonly canvas: HTMLCanvasElement
+  private readonly speedLines: HTMLElement
+  private readonly snapFlash: HTMLElement
+  private lineHot = false
+  private lineOpacity = -1
+  private snapOn = false
 
   constructor() {
     this.canvas = document.querySelector('#view') as HTMLCanvasElement
+    this.speedLines = must('#speedlines')
+    this.snapFlash = must('#snapflash')
     this.renderer = new WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35))
     this.renderer.setSize(window.innerWidth, window.innerHeight)
@@ -115,7 +124,14 @@ export class Game {
     this.city = buildCity(this.scene)
     this.player = new Player(SPAWN.x, SPAWN.y, SPAWN.z)
     this.character = new Character()
-    this.scene.add(this.character.group, this.character.capeMesh, this.filament.mesh)
+    this.scene.add(
+      this.character.group,
+      this.character.capeMesh,
+      this.filament.mesh,
+      this.juice.trail,
+      this.juice.dust,
+      this.juice.flash,
+    )
     this.orbs = new Orbs(this.scene, layoutOrbs(this.city.colliders))
     this.trial = new Trial(this.scene)
     this.rain = new Rain()
@@ -268,8 +284,12 @@ export class Game {
       if (this.input.pressed('KeyR')) this.player.respawn()
       if (this.input.pressed('KeyT')) this.restart()
       this.player.applyLook(this.input, dt)
+      this.juice.sync(this.player)
+      this.rig.setArc(this.juice.arc)
       this.rig.update(dt, this.player, this.city.colliders)
       this.player.simulate(dt, this.input, this.city.colliders, this.rig.camera.position)
+      this.juice.sync(this.player)
+      this.rig.setArc(this.juice.arc)
       this.rig.update(dt * 0.35, this.player, this.city.colliders)
       const picked = this.orbs.update(this.player.pos, this.clock.elapsedTime)
       this.trial.update(dt, this.player.pos)
@@ -280,11 +300,20 @@ export class Game {
       if (this.player.justAttached) {
         this.didSwing = true
         this.audio.attach()
-        this.rig.kick()
+        _kick.subVectors(this.player.anchor, this.player.pos)
+        this.rig.attachKick(_kick)
+        this.juice.onAttach(this.player.anchor)
       }
       if (this.player.justDetached) {
         this.didRelease = true
         this.audio.release()
+        this.rig.whoosh(this.player.vel)
+        this.juice.onRelease(this.character.handWorld, this.player.anchor, this.player.vel)
+      }
+      if (this.player.justLanded) {
+        this.audio.land()
+        this.rig.land(this.player.landImpact)
+        this.juice.onLand(this.player.pos, this.player.landImpact)
       }
       if (this.player.gliding) this.didGlide = true
       if (this.player.justWhiff) this.audio.whiff()
@@ -296,13 +325,11 @@ export class Game {
       }
       if (this.player.toast) this.hud.toast(this.player.toast)
       this.audio.setSpeed(this.player.vel.length())
-      const lines = must('#speedlines')
-      const rush = this.player.diving ? 0.55 : Math.max(0, this.player.vel.length() - 22) / 80
-      lines.style.opacity = String(Math.min(0.55, rush))
+      this.paintSwingOverlay(this.player.diving ? 0.55 : Math.max(0, this.player.vel.length() - 22) / 80)
     } else if (this.mode === 'menu') {
       this.flyover(dt)
-      must('#speedlines').style.opacity = '0'
-    }
+      this.clearSwingOverlay()
+    } else this.clearSwingOverlay()
 
     this.character.update(dt, {
       pos: this.player.pos,
@@ -314,6 +341,7 @@ export class Game {
       diving: this.player.diving,
       anchor: this.player.attached ? this.player.anchor : null,
     })
+    this.juice.update(dt, this.player, this.character.handWorld, this.rig.camera)
     this.drawLine()
     this.sky.position.copy(this.rig.camera.position)
     this.rain.update(dt, this.rig.camera.position)
@@ -323,20 +351,64 @@ export class Game {
     this.input.consume()
   }
 
+  private paintSwingOverlay(rush: number): void {
+    const hot = this.juice.arc > 0.4 || this.juice.release > 0.2
+    if (hot !== this.lineHot) {
+      this.lineHot = hot
+      this.speedLines.classList.toggle('hot', hot)
+    }
+    const opacity = Math.min(0.88, rush * 0.45 + (hot ? 0.74 : 0))
+    if (Math.abs(opacity - this.lineOpacity) > 0.05) {
+      this.lineOpacity = opacity
+      this.speedLines.style.opacity = String(opacity)
+    }
+    const flash = Math.min(0.72, this.juice.pulse * 0.8)
+    if (flash > 0.02 || this.snapOn) {
+      this.snapOn = flash > 0.02
+      this.snapFlash.style.opacity = String(flash)
+    }
+  }
+
+  private clearSwingOverlay(): void {
+    if (this.lineOpacity !== 0) {
+      this.lineOpacity = 0
+      this.speedLines.style.opacity = '0'
+    }
+    if (this.lineHot) {
+      this.lineHot = false
+      this.speedLines.classList.remove('hot')
+    }
+    if (this.snapOn) {
+      this.snapOn = false
+      this.snapFlash.style.opacity = '0'
+    }
+  }
+
   private drawLine(): void {
     if (this.mode === 'play' && this.player.attached) {
       const dist = this.character.handWorld.distanceTo(this.player.anchor)
       const slack = Math.max(0, this.player.rope.length - dist)
-      this.filament.draw(this.character.handWorld, this.player.anchor, 0.45 + slack * 0.35)
+      const base = 0.45 + slack * 0.35
+      this.filament.heat(this.juice.lineHeat())
+      this.filament.draw(this.character.handWorld, this.player.anchor, this.juice.lineSag(base), 0.98, this.juice.lineWidth())
       this.aim.visible = false
       return
     }
     if (this.mode === 'play' && this.player.whiff > 0) {
       const tip = this.player.whiffFrom.clone().addScaledVector(this.player.whiffDir, 16)
+      this.filament.heat(0.2)
       this.filament.draw(this.player.whiffFrom, tip, 1.4, this.player.whiff * 3)
       this.aim.visible = false
       return
     }
+    if (this.mode === 'play' && this.juice.ghostLife > 0) {
+      const life = this.juice.ghostLife / 0.42
+      this.filament.heat(life)
+      this.filament.draw(this.juice.ghostDraw, this.juice.ghostTo, 0.25 + (1 - life) * 2.4, Math.min(1, life * 1.15), 1.15 + life)
+      this.aim.visible = false
+      return
+    }
+    this.filament.heat(0)
     this.filament.hide()
     if (this.mode === 'play' && this.player.hasAim) {
       this.aim.visible = true
@@ -471,6 +543,8 @@ function makeSky(): Mesh {
   mesh.frustumCulled = false
   return mesh
 }
+
+const _kick = new Vector3()
 
 function must(sel: string): HTMLElement {
   const el = document.querySelector(sel)

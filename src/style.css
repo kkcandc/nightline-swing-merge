@@ -41,9 +41,38 @@ html, body {
   inset: -10%;
   pointer-events: none;
   opacity: 0;
-  background: repeating-conic-gradient(from 0deg, transparent 0 12deg, rgba(210, 236, 255, 0.16) 12deg 12.3deg);
-  mask-image: radial-gradient(circle, transparent 18%, #000 72%);
+  --line: 0.18;
+  background: repeating-conic-gradient(from 0deg, transparent 0 11deg, rgba(210, 236, 255, var(--line)) 11deg 11.55deg);
+  mask-image: radial-gradient(circle, transparent 16%, #000 70%);
   mix-blend-mode: screen;
+}
+
+#speedlines.hot {
+  --line: 0.9;
+}
+
+#snapflash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255, 255, 255, 0.2), transparent 26%),
+    radial-gradient(circle at center, transparent 42%, rgba(168, 236, 255, 0.34) 100%);
+  mix-blend-mode: screen;
+}
+
+#build {
+  position: fixed;
+  left: 12px;
+  bottom: 8px;
+  z-index: 6;
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: rgba(184, 255, 244, 0.7);
+  pointer-events: none;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
 }
 
 #ui { position: fixed; inset: 0; pointer-events: none; }

@@ -20,6 +20,10 @@ export class CameraRig {
   private fov: number
   private shake = 0
   private fovKick = 0
+  private readonly nudge = new Vector3()
+  private dip = 0
+  private arcTarget = 0
+  private arcExtra = 0
 
   constructor(aspect: number) {
     this.fov = TUNE.fov
@@ -31,9 +35,42 @@ export class CameraRig {
     this.fovKick = 7
   }
 
+  /** Pull the frame toward the new anchor and punch the lens. */
+  attachKick(toward: Vector3): void {
+    this.shake = Math.min(1, this.shake + 0.95)
+    this.fovKick = Math.max(this.fovKick, 11)
+    const len = toward.length()
+    if (len > 0.05) this.nudge.addScaledVector(toward, 0.72 / len)
+  }
+
+  /** Brief widen and backward hitch when the line lets go. */
+  whoosh(vel: Vector3): void {
+    this.shake = Math.min(1, this.shake + 0.4)
+    this.fovKick = Math.max(this.fovKick, 14)
+    const len = vel.length()
+    if (len > 1) this.nudge.addScaledVector(vel, -0.7 / len)
+  }
+
+  /** Short downward dip scaled by how hard the feet hit. */
+  land(impact: number): void {
+    this.dip = Math.max(this.dip, 0.1 + impact * 0.72)
+    this.shake = Math.min(1, this.shake + 0.2 + impact * 0.75)
+  }
+
+  /** Extra field of view at the bottom of a swing, in 0..1. */
+  setArc(amount: number): void {
+    this.arcTarget = amount * 16
+  }
+
   snap(player: Player, boxes: Collider[]): void {
     this.ready = false
     this.roll = 0
+    this.nudge.set(0, 0, 0)
+    this.dip = 0
+    this.arcTarget = 0
+    this.arcExtra = 0
+    this.shake = 0
+    this.fovKick = 0
     this.update(1 / 30, player, boxes)
     this.ready = true
   }
@@ -78,16 +115,21 @@ export class CameraRig {
 
     this.shake = damp(this.shake, 0, 8, dt)
     this.fovKick = damp(this.fovKick, 0, 6, dt)
+    this.dip = damp(this.dip, 0, 8, dt)
+    this.arcExtra = damp(this.arcExtra, this.arcTarget, 12, dt)
+    this.nudge.multiplyScalar(Math.exp(-9 * dt))
     if (this.shake > 0.01) {
       this.pos.x += (Math.random() - 0.5) * this.shake * 0.16
       this.pos.y += (Math.random() - 0.5) * this.shake * 0.1
     }
+    this.pos.add(this.nudge)
+    this.pos.y -= this.dip
 
     const lateral = player.vel.dot(right)
     const targetRoll = clamp(-lateral * 0.014, -0.34, 0.34)
     this.roll = damp(this.roll, targetRoll, player.attached ? 5 : 7, dt)
 
-    const targetFov = MathUtils.lerp(TUNE.fov, TUNE.fovFast, clamp(speed / 46, 0, 1)) + this.fovKick
+    const targetFov = MathUtils.lerp(TUNE.fov, TUNE.fovFast, clamp(speed / 46, 0, 1)) + this.fovKick + this.arcExtra
     this.fov = damp(this.fov, targetFov, 4.5, dt)
 
     this.camera.position.copy(this.pos)

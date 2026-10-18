@@ -39,6 +39,8 @@ export class Player {
   justDetached = false
   justPullout = false
   justWhiff = false
+  justLanded = false
+  landImpact = 0
   sensMul = 1
 
   private seek = 0
@@ -54,6 +56,7 @@ export class Player {
   diveHold = false
   private detachedAt = -10
   private pulloutArmed = false
+  private wasAirborne = false
 
   constructor(x: number, y: number, z: number) {
     this.pos.set(x, y, z)
@@ -77,6 +80,8 @@ export class Player {
     this.justDetached = false
     this.justPullout = false
     this.justWhiff = false
+    this.justLanded = false
+    this.landImpact = 0
     this.toast = ''
 
     up.set(0, 1, 0)
@@ -239,6 +244,8 @@ export class Player {
     if (this.grounded) this.pulloutArmed = false
     this.wasDiving = this.diving
 
+    const fallSpeed = -this.vel.y
+    const wasGrounded = this.grounded
     const hit = resolvePlayer(this.pos, this.vel, prevY, TUNE.radius, TUNE.height, boxes)
     if (this.attached) {
       point.copy(this.pos)
@@ -249,6 +256,12 @@ export class Player {
       this.pos.z = point.z
     }
     this.grounded = hit.grounded
+    if (!this.grounded) this.wasAirborne = true
+    if (this.grounded && !wasGrounded && this.wasAirborne && !this.attached && fallSpeed > 11) {
+      this.justLanded = true
+      this.landImpact = Math.min(1, (fallSpeed - 11) / 22)
+    }
+    if (this.grounded) this.wasAirborne = false
     if (this.grounded) {
       this.stamina = Math.min(TUNE.glideStamina, this.stamina + dt * 1.15)
       this.glideLock = false

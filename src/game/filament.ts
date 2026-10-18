@@ -2,6 +2,7 @@ import {
   AdditiveBlending,
   BufferAttribute,
   BufferGeometry,
+  Color,
   DoubleSide,
   Mesh,
   MeshBasicMaterial,
@@ -52,7 +53,12 @@ export class Filament {
     this.mesh.visible = false
   }
 
-  draw(from: Vector3, to: Vector3, sag: number, opacity = 0.95): void {
+  heat(amount: number): void {
+    const t = Math.max(0, Math.min(1, amount))
+    this.mat.color.copy(_cool).lerp(_hot, t)
+  }
+
+  draw(from: Vector3, to: Vector3, sag: number, opacity = 0.95, widthScale = 1): void {
     this.mesh.visible = true
     this.mat.opacity = opacity
     const axis = _axis.subVectors(to, from)
@@ -61,8 +67,9 @@ export class Filament {
     let side = _side.crossVectors(axis, _up)
     if (side.lengthSq() < 1e-4) side.crossVectors(axis, _alt)
     side.normalize()
-    this.strip(0, from, to, sag, side, 0.16, 0)
-    this.strip(1, from, to, sag * 0.65, side, 0.05, 0.22)
+    const scale = Math.max(0.2, widthScale)
+    this.strip(0, from, to, sag, side, 0.16 * scale, 0)
+    this.strip(1, from, to, sag * 0.65, side, 0.05 * scale, 0.22)
     const attr = this.mesh.geometry.getAttribute('position') as BufferAttribute
     attr.needsUpdate = true
   }
@@ -91,3 +98,5 @@ const _side = new Vector3()
 const _up = new Vector3(0, 1, 0)
 const _alt = new Vector3(1, 0, 0)
 const _p = new Vector3()
+const _cool = new Color(0xd7fbff)
+const _hot = new Color(0xffffff)

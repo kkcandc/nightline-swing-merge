@@ -68,6 +68,12 @@ export class AudioBus {
 
   release(): void {
     this.tone(160, 0.12, 'sine', 0.05)
+    this.noise(0.1, 420, 0.07)
+  }
+
+  land(): void {
+    this.noise(0.09, 160, 0.1)
+    this.tone(64, 0.08, 'sine', 0.04)
   }
 
   whiff(): void {
