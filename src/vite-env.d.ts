@@ -9,6 +9,7 @@ interface NightlineDebug {
   debugGlide: (on: boolean) => void
   debugDive: (on: boolean) => void
   debugTeleport: (x: number, y: number, z: number) => void
+  debugPickup?: () => { reduced: boolean; alive: number; traveling: number }
 }
 
 interface Window {

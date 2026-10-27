@@ -31,7 +31,8 @@ import { Filament } from './filament'
 import { SwingJuice } from './juice'
 import { Hud, type HudMode } from './hud'
 import { Input } from './input'
-import { layoutOrbs, Orbs } from './orbs'
+import { CHAIN_WINDOW, layoutOrbs, Orbs } from './orbs'
+import { PickupJuice } from './pickup'
 import { Player } from './player'
 import { Rain } from './rain'
 import { medalFor, Trial } from './trial'
@@ -63,6 +64,7 @@ export class Game {
   private readonly trial: Trial
   private readonly filament = new Filament()
   private readonly juice = new SwingJuice()
+  private readonly pickup = new PickupJuice()
   private readonly rain: Rain
   private readonly audio = new AudioBus()
   private readonly hud: Hud
@@ -131,6 +133,7 @@ export class Game {
       this.juice.trail,
       this.juice.dust,
       this.juice.flash,
+      this.pickup.group,
     )
     this.orbs = new Orbs(this.scene, layoutOrbs(this.city.colliders))
     this.trial = new Trial(this.scene)
@@ -189,6 +192,7 @@ export class Game {
         this.player.teleport(x, y, z)
         this.rig.snap(this.player, this.city.colliders)
       },
+      debugPickup: () => this.pickup.sample(),
     }
 
     this.renderer.setAnimationLoop(() => this.frame())
@@ -291,11 +295,14 @@ export class Game {
       this.juice.sync(this.player)
       this.rig.setArc(this.juice.arc)
       this.rig.update(dt * 0.35, this.player, this.city.colliders)
-      const picked = this.orbs.update(this.player.pos, this.clock.elapsedTime)
+      const picks = this.orbs.update(this.player.pos, this.clock.elapsedTime)
       this.trial.update(dt, this.player.pos)
-      if (picked) {
-        this.audio.orb()
-        if (this.orbs.chainCount > 1) this.hud.toast(`CHAIN ${this.orbs.chainCount}`)
+      if (picks.length) {
+        for (const pick of picks) {
+          this.audio.orb(pick.chain)
+          this.pickup.burst(pick.x, pick.y, pick.z, pick.chain)
+        }
+        this.hud.celebrate(picks, this.rig.camera)
       }
       if (this.player.justAttached) {
         this.didSwing = true
@@ -342,6 +349,7 @@ export class Game {
       anchor: this.player.attached ? this.player.anchor : null,
     })
     this.juice.update(dt, this.player, this.character.handWorld, this.rig.camera)
+    this.pickup.update(dt, this.rig.camera)
     this.drawLine()
     this.sky.position.copy(this.rig.camera.position)
     this.rain.update(dt, this.rig.camera.position)
@@ -451,6 +459,9 @@ export class Game {
       orbs: this.orbs.collected,
       orbTotal: this.orbs.list.length,
       chain: this.orbs.chainCount,
+      score: this.orbs.points,
+      chainLeft: this.orbs.chainRemaining(this.clock.elapsedTime),
+      chainWindow: CHAIN_WINDOW,
       hint: this.mode === 'play' ? hint : '',
       landmark: this.trial.finished ? 'Circuit clear' : (ring?.name ?? 'Night Circuit'),
       time: this.trial.time,
@@ -492,6 +503,8 @@ export class Game {
       rope: this.player.rope.length,
       orbs: this.orbs.collected,
       orbTotal: this.orbs.list.length,
+      score: this.orbs.points,
+      chain: this.orbs.chainCount,
       ring: this.trial.index,
       yaw: this.player.yaw,
       pitch: this.player.pitch,
