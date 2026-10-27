@@ -14,7 +14,18 @@ import { RINGS, ROOF_SEEDS } from './course'
 
 export type Orb = { id: string; x: number; y: number; z: number }
 
+export type Pickup = {
+  x: number
+  y: number
+  z: number
+  chain: number
+  points: number
+  score: number
+}
+
 const KEY = 'nightline-orbs-v1'
+export const CHAIN_WINDOW = 4.2
+export const ORB_POINTS = 100
 
 export function layoutOrbs(colliders: Collider[]): Orb[] {
   const orbs: Orb[] = []
@@ -66,6 +77,7 @@ export class Orbs {
   private readonly dummy = new Object3D()
   private chain = 0
   private last = 0
+  private score = 0
 
   constructor(scene: Scene, list: Orb[]) {
     this.list = list
@@ -83,6 +95,7 @@ export class Orbs {
     this.halo = new InstancedMesh(new TorusGeometry(0.95, 0.035, 6, 16), haloMat, list.length)
     this.halo.frustumCulled = false
     scene.add(this.mesh, this.halo)
+    this.score = this.got.size * ORB_POINTS
     this.write(0)
   }
 
@@ -94,28 +107,42 @@ export class Orbs {
     return this.chain
   }
 
+  get points(): number {
+    return this.score
+  }
+
+  chainRemaining(now: number): number {
+    if (this.chain <= 1) return 0
+    return Math.max(0, CHAIN_WINDOW - (now - this.last))
+  }
+
   reset(): void {
     this.got.clear()
     this.chain = 0
+    this.last = 0
+    this.score = 0
     localStorage.removeItem(KEY)
     this.write(0)
   }
 
-  update(pos: Vector3, now: number): number {
-    let picked = 0
+  update(pos: Vector3, now: number): Pickup[] {
+    if (this.chain > 0 && now - this.last >= CHAIN_WINDOW) this.chain = 0
+    const picks: Pickup[] = []
     for (let i = 0; i < this.list.length; i++) {
       const orb = this.list[i]!
       if (this.got.has(orb.id)) continue
       if (Math.hypot(pos.x - orb.x, pos.y + 1 - orb.y, pos.z - orb.z) < 2.7) {
         this.got.add(orb.id)
-        picked++
-        this.chain = now - this.last < 4.2 ? this.chain + 1 : 1
+        this.chain += 1
         this.last = now
+        const points = ORB_POINTS * this.chain
+        this.score += points
+        picks.push({ x: orb.x, y: orb.y, z: orb.z, chain: this.chain, points, score: this.score })
       }
     }
-    if (picked) this.save()
+    if (picks.length) this.save()
     this.write(now)
-    return picked
+    return picks
   }
 
   dots(): { x: number; z: number; got: boolean }[] {

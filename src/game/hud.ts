@@ -1,4 +1,14 @@
+import { Vector4, type PerspectiveCamera } from 'three'
+
 export type HudMode = 'menu' | 'play' | 'pause'
+
+export type ScorePop = {
+  x: number
+  y: number
+  z: number
+  points: number
+  chain: number
+}
 
 export type HudFrame = {
   speed: number
@@ -9,6 +19,9 @@ export type HudFrame = {
   orbs: number
   orbTotal: number
   chain: number
+  score: number
+  chainLeft: number
+  chainWindow: number
   hint: string
   landmark: string
   time: number
@@ -38,8 +51,11 @@ type Actions = {
 export class Hud {
   private readonly map: HTMLCanvasElement
   private readonly mapCtx: CanvasRenderingContext2D
+  private readonly popAt = new Vector4()
   private toastTimer = 0
   private lastToast = ''
+  private shownScore = -1
+  private shownChain = 0
 
   constructor(actions: Actions) {
     this.map = must('#map')
@@ -94,6 +110,10 @@ export class Hud {
     }
   }
 
+  celebrate(pops: ScorePop[], camera: PerspectiveCamera): void {
+    for (const pop of pops) this.spawnPop(pop, camera)
+  }
+
   update(frame: HudFrame): void {
     must('#speed').textContent = String(Math.round(frame.speed * 3.6))
     must('#state').textContent = frame.attached ? 'LINE' : frame.diving ? 'DIVE' : frame.gliding ? 'CAPE' : 'RUN'
@@ -101,6 +121,8 @@ export class Hud {
     bar.style.transform = `scaleX(${Math.max(0, Math.min(1, frame.stamina))})`
     must('#orbs').textContent = `${frame.orbs}/${frame.orbTotal}`
     must('#chain').textContent = frame.chain > 1 ? `Chain ${frame.chain}` : ''
+    this.paintScore(frame)
+    this.paintCombo(frame)
     must('#hint').textContent = frame.hint
     must('#landmark').textContent = frame.finished ? 'Circuit clear' : frame.landmark
     must('#clock').textContent = frame.running || frame.finished ? format(frame.time) : '—:—'
@@ -114,6 +136,57 @@ export class Hud {
     fps.hidden = !frame.showFps
     if (frame.showFps) fps.textContent = `${frame.fps.toFixed(0)} fps`
     this.drawMap(frame)
+  }
+
+  private paintScore(frame: HudFrame): void {
+    if (frame.score === this.shownScore) return
+    const first = this.shownScore < 0
+    this.shownScore = frame.score
+    const el = must('#score')
+    el.textContent = String(frame.score)
+    if (first) return
+    el.classList.remove('tick')
+    void el.offsetWidth
+    el.classList.add('tick')
+  }
+
+  private paintCombo(frame: HudFrame): void {
+    const el = must('#combo')
+    const live = frame.chain > 1 && frame.chainLeft > 0
+    el.hidden = !live
+    if (!live) {
+      this.shownChain = 0
+      return
+    }
+    must('#combo-mult').textContent = `×${frame.chain}`
+    const span = Math.max(0.001, frame.chainWindow)
+    must<HTMLElement>('#combo-fill').style.transform = `scaleX(${Math.max(0, Math.min(1, frame.chainLeft / span))})`
+    if (frame.chain !== this.shownChain) {
+      this.shownChain = frame.chain
+      el.classList.remove('punch')
+      void el.offsetWidth
+      el.classList.add('punch')
+    }
+  }
+
+  private spawnPop(pop: ScorePop, camera: PerspectiveCamera): void {
+    const el = document.createElement('p')
+    el.className = pop.chain >= 3 ? 'score-pop hot' : 'score-pop'
+    el.textContent = pop.chain > 1 ? `+${pop.points}  ×${pop.chain}` : `+${pop.points}`
+    camera.updateMatrixWorld()
+    const clip = this.popAt.set(pop.x, pop.y + 1.2, pop.z, 1)
+    clip.applyMatrix4(camera.matrixWorldInverse).applyMatrix4(camera.projectionMatrix)
+    if (clip.w > 0.05) {
+      const x = (clip.x / clip.w * 0.5 + 0.5) * window.innerWidth
+      const y = (-clip.y / clip.w * 0.5 + 0.5) * window.innerHeight
+      el.style.left = `${Math.max(48, Math.min(window.innerWidth - 48, x))}px`
+      el.style.top = `${Math.max(48, Math.min(window.innerHeight - 48, y))}px`
+    } else {
+      el.style.left = '50%'
+      el.style.top = '46%'
+    }
+    must('#pops').append(el)
+    window.setTimeout(() => el.remove(), 950)
   }
 
   private drawMap(frame: HudFrame): void {

@@ -9,15 +9,16 @@
       content="NIGHTLINE — swing filament lines and cape-glide through Vesper Reach, a gothic night city."
     />
     <meta name="theme-color" content="#100e18" />
+    <meta name="nightline-build" content="orbjuice-2026-10-27" />
     <link rel="icon" href="/favicon.svg" />
     <link rel="stylesheet" href="/src/style.css" />
   </head>
-  <body>
+  <body data-build="orbjuice-2026-10-27">
     <canvas id="view"></canvas>
     <div id="vignette"></div>
     <div id="speedlines"></div>
     <div id="snapflash"></div>
-    <p id="build">swingfeel-2026-10-19</p>
+    <p id="build">orbjuice-2026-10-27</p>
     <div id="ui">
       <header id="brand" hidden>
         <p class="eyebrow">Vesper Reach</p>
@@ -49,6 +50,7 @@
           <div>
             <p id="landmark">Mourning Gate</p>
             <p id="clock">—:—</p>
+            <p id="scoreline"><span id="score">0</span> <small>score</small></p>
           </div>
           <div class="hud-right">
             <p id="best">BEST —</p>
@@ -75,6 +77,12 @@
         <label class="sens">Look sensitivity <input id="sens" type="range" min="0.55" max="1.8" step="0.05" value="1" /></label>
       </section>
 
+      <div id="combo" hidden>
+        <p id="combo-kicker">Chain</p>
+        <p id="combo-mult">×2</p>
+        <div class="combo-meter" aria-hidden="true"><span id="combo-fill"></span></div>
+      </div>
+      <div id="pops"></div>
       <div id="crosshair" hidden></div>
       <div id="toast"></div>
       <div id="banner" hidden></div>

@@ -80,9 +80,11 @@ export class AudioBus {
     this.noise(0.05, 1400, 0.05)
   }
 
-  orb(): void {
-    this.tone(680, 0.08, 'sine', 0.06)
-    this.tone(920, 0.12, 'sine', 0.04)
+  orb(chain = 1): void {
+    const step = Math.min(Math.max(0, chain - 1), 8)
+    this.tone(640 + step * 38, 0.07, 'sine', 0.055)
+    this.tone(880 + step * 46, 0.11, 'sine', 0.04)
+    if (chain >= 3) this.tone(1180 + step * 24, 0.14, 'triangle', 0.028)
   }
 
   ring(): void {

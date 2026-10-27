@@ -1,6 +1,7 @@
 import { Game } from './game/Game'
 
-console.info('swingfeel-2026-10-19')
+console.info('orbjuice-2026-10-27')
+document.documentElement.dataset.build = 'orbjuice-2026-10-27'
 
 const boot = document.querySelector('#boot')
 try {
